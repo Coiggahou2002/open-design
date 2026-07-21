@@ -93,6 +93,21 @@ describe('analytics run_finished contract', () => {
         live_artifact_seen: false,
         retry_attempt_count: 1,
         retry_final_result: 'success',
+<<<<<<< HEAD
+=======
+        context_budget_action: 'rollover',
+        context_budget_source: 'model_metadata',
+        estimated_prompt_tokens: 120000,
+        context_window_tokens: 204800,
+        reserved_output_tokens: 8192,
+        input_budget_tokens: 186368,
+        context_budget_ratio: 120000 / 186368,
+        prior_session_input_tokens: 170000,
+        projected_session_input_tokens: 184000,
+        rollover_threshold_tokens: 158412,
+        compacted_prompt_tokens: 80000,
+        omitted_transcript_message_blocks: 12,
+>>>>>>> 43b6403f0 (roll over near-limit agent sessions (#5816))
       },
     } satisfies Extract<AnalyticsEventPayload, { event: 'run_finished' }>;
 
@@ -112,6 +127,11 @@ describe('analytics run_finished contract', () => {
     expect(payload.props.last_progress_age_ms).toBe(610_000);
     expect(payload.props.retry_attempt_count).toBe(1);
     expect(payload.props.retry_final_result).toBe('success');
+<<<<<<< HEAD
+=======
+    expect(payload.props.context_budget_action).toBe('rollover');
+    expect(payload.props.context_window_tokens).toBe(204800);
+>>>>>>> 43b6403f0 (roll over near-limit agent sessions (#5816))
   });
 
   it('accepts retry attempted and finished lifecycle events', () => {

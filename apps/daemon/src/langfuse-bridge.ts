@@ -97,6 +97,23 @@ interface DaemonRunRecord {
   promptTelemetry?: PromptStackTelemetry;
   projectAttachmentPaths?: string[];
   projectMetadata?: Record<string, unknown> | null;
+<<<<<<< HEAD
+=======
+  contextBudget?: {
+    action: string;
+    source: string;
+    estimatedPromptTokens: number;
+    contextWindowTokens?: number;
+    reservedOutputTokens?: number;
+    inputBudgetTokens?: number;
+    budgetRatio?: number;
+    priorSessionInputTokens?: number;
+    projectedInputTokens?: number;
+    rolloverThresholdTokens?: number;
+    compactedPromptTokens?: number;
+    omittedTranscriptMessageBlocks?: number;
+  };
+>>>>>>> 43b6403f0 (roll over near-limit agent sessions (#5816))
 }
 
 interface TraceSafeManifestResult {

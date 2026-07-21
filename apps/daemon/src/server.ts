@@ -198,6 +198,13 @@ import {
   resolveDefaultModelFromOptions,
   resolveModelForAgent,
 } from './runtimes/models.js';
+<<<<<<< HEAD
+=======
+import {
+  compactTranscriptForSessionRollover,
+  evaluateModelContextBudget,
+} from './runtimes/model-context-budget.js';
+>>>>>>> 43b6403f0 (roll over near-limit agent sessions (#5816))
 import { loadMmdRouteLaunchEnv } from './runtimes/mmd-routes.js';
 import { preparePromptFileForAgent } from './runtimes/prompt-file.js';
 import { TerminalControlSequenceStripper } from './runtimes/terminal-control.js';
@@ -4904,7 +4911,7 @@ export async function startServer({
         // the probe failure and applies the identical fallback.
       }
     }
-    const agentResumeCtx =
+    let agentResumeCtx =
       agentSupportsSessionResume && run.conversationId
         ? resolveAgentResumeContext(db, {
             conversationId: run.conversationId,
@@ -4913,7 +4920,28 @@ export async function startServer({
             currentCwd: effectiveCwd,
             currentAssistantMessageId: run.assistantMessageId ?? null,
           })
-        : { storedSessionId: null as string | null, resumeSessionId: null as string | null, newSessionId: undefined as string | undefined, isResuming: false, storedStablePromptHash: null as string | null, invalidationReason: null };
+        : { storedSessionId: null as string | null, resumeSessionId: null as string | null, newSessionId: undefined as string | undefined, isResuming: false, storedStablePromptHash: null as string | null, storedInputTokens: null as number | null, invalidationReason: null };
+    const sessionContextBudget = agentResumeCtx.isResuming
+      ? evaluateModelContextBudget({
+          prompt: typeof currentPrompt === 'string' ? currentPrompt : String(message ?? ''),
+          modelId: safeModel,
+          metadata: getKnownModelOption(
+            def,
+            safeModel,
+            requestedLiveModelScope,
+          )?.metadata,
+          priorSessionInputTokens: agentResumeCtx.storedInputTokens,
+        })
+      : null;
+    if (sessionContextBudget?.action === 'rollover') {
+      agentResumeCtx = {
+        ...agentResumeCtx,
+        resumeSessionId: null,
+        isResuming: false,
+        storedStablePromptHash: null,
+        invalidationReason: 'context_budget',
+      };
+    }
     const publishNativeSessionRecoveryMetadata = () => {
       if (!run.nativeSessionRecovery) return;
       design.runs.emit(run, 'diagnostic', {
@@ -4930,8 +4958,16 @@ export async function startServer({
       invalidationReason: agentResumeCtx.invalidationReason,
     });
     publishNativeSessionRecoveryMetadata();
+    const rolloverCompaction =
+      sessionContextBudget?.action === 'rollover' &&
+      sessionContextBudget.inputBudgetTokens
+        ? compactTranscriptForSessionRollover(
+            typeof message === 'string' ? message : String(message ?? ''),
+            Math.max(4_096, Math.floor(sessionContextBudget.inputBudgetTokens * 0.6)),
+          )
+        : null;
     const userRequestPrompt = composeChatUserRequestForAgent(
-      message,
+      rolloverCompaction?.prompt ?? message,
       currentPrompt,
       // Only trim to the latest turn when we are actually resuming an
       // existing session. A create turn still sends the full transcript so
@@ -5836,6 +5872,65 @@ export async function startServer({
       // a precise error, which beats a pre-emptive block on a flaky metadata read.
     }
 
+<<<<<<< HEAD
+=======
+    const launchContextBudget = evaluateModelContextBudget({
+      prompt: composed,
+      modelId: safeModel,
+      metadata: getKnownModelOption(
+        def,
+        safeModel,
+        requestedLiveModelScope,
+      )?.metadata,
+    });
+    const contextBudget =
+      !launchContextBudget.error && sessionContextBudget?.action === 'rollover'
+        ? {
+            ...launchContextBudget,
+            action: 'rollover' as const,
+            priorSessionInputTokens: sessionContextBudget.priorSessionInputTokens,
+            projectedInputTokens: sessionContextBudget.projectedInputTokens,
+            rolloverThresholdTokens: sessionContextBudget.rolloverThresholdTokens,
+            ...(rolloverCompaction
+              ? {
+                  compactedPromptTokens: rolloverCompaction.compactedTokens,
+                  omittedTranscriptMessageBlocks: rolloverCompaction.omittedMessageBlocks,
+                }
+              : {}),
+          }
+        : launchContextBudget;
+    run.contextBudget = contextBudget;
+    design.runs.emit(run, 'diagnostic', {
+      type: 'model_context_budget',
+      action: contextBudget.action,
+      source: contextBudget.source,
+      model_id: contextBudget.modelId,
+      estimated_prompt_tokens: contextBudget.estimatedPromptTokens,
+      context_window_tokens: contextBudget.contextWindowTokens,
+      reserved_output_tokens: contextBudget.reservedOutputTokens,
+      safety_margin_tokens: contextBudget.safetyMarginTokens,
+      input_budget_tokens: contextBudget.inputBudgetTokens,
+      context_budget_ratio: contextBudget.budgetRatio,
+      prior_session_input_tokens: contextBudget.priorSessionInputTokens,
+      projected_session_input_tokens: contextBudget.projectedInputTokens,
+      rollover_threshold_tokens: contextBudget.rolloverThresholdTokens,
+      compacted_prompt_tokens: contextBudget.compactedPromptTokens,
+      omitted_transcript_message_blocks: contextBudget.omittedTranscriptMessageBlocks,
+    });
+    if (contextBudget.error) {
+      design.runs.emit(
+        run,
+        'error',
+        createSseErrorPayload(
+          contextBudget.error.code,
+          contextBudget.error.message,
+          { retryable: false },
+        ),
+      );
+      return design.runs.finish(run, 'failed', 1, null);
+    }
+
+>>>>>>> 43b6403f0 (roll over near-limit agent sessions (#5816))
     // Plain-streaming adapters that own a "continue most recent
     // conversation" CLI flag (today: only `agy -c`) read this signal
     // to resume upstream session state on follow-up turns. The query
